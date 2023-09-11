@@ -139,8 +139,8 @@ BOOTSZ=0
 PROG_BOOT_ONLY=yes
 
 # CPU Frequency
-F_CPU=2000000
-#F_CPU=32000000
+#F_CPU=2000000
+F_CPU=32000000
 #F_CPU=16000000
 
 # Configuration support
@@ -159,7 +159,7 @@ FORMAT = ihex
 #FORMAT = srec
 
 # Target file name (without extension).
-TARGET = stmboot
+TARGET = orx
 
 
 # List C source files here. (C dependencies are automatically generated.)

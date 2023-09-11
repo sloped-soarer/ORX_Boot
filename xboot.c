@@ -191,7 +191,7 @@ int main(void)
   USART_ENABLE_TX(USARTC0);
   USART_ENABLE_RX(USARTC0);
 
-  _delay_ms(1000);
+  _delay_ms(100);
   BEEPER_OFF;
 
   // the bootloader enable pin was active or

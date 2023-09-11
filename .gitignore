@@ -1,0 +1,9 @@
+*.d
+*.lst
+*.lss
+*.o
+orx.elf
+orx.hex
+orx.map
+orx.sym
+orx.eep

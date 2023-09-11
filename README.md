@@ -12,7 +12,7 @@ Either build the code yourself or program the file "stmboot-boot.hex" into the O
 
 To program the .hex file into the ORX module use the following command.
 
-avrdude -c avrisp2 -p x32d4 -Uboot:w:stmboot-boot.hex:i
+avrdude -c avrisp2 -p x32d4 -Uboot:w:orx-boot.hex:i
 
 To build the bootloader from source, do the following :-
 
