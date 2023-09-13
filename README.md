@@ -8,7 +8,7 @@ For the purpose of loading new application firmware to the ORX module, the bootl
 The xmega has 32KB application section, plus a 4KB bootloader section.
 
 To program this bootloader you will need a PDI capable programmer such as the Olimex AVR-ISP-MK2.
-Either build the code yourself or program the file "stmboot-boot.hex" into the ORX module.
+Either build the code yourself or program the file "orx-boot.hex" into the ORX module.
 
 To program the .hex file into the ORX module use the following command.
 
