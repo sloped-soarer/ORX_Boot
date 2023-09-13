@@ -70,7 +70,12 @@
 
 /* Function Prototypes */
 
-void led_init(void);
+/* The main function is in init9, which removes the interrupt vector table */
+/* we don't need. It is also 'naked', which means the compiler does not    */
+/* generate any entry or exit code itself. */
+int main(void) __attribute__ ((OS_main)) __attribute__ ((noreturn)) __attribute__ ((section (".init9")));
+
+//void led_init(void);
 void uart_putc(char ch);
 char uart_getc(void);
 void appStart(void);
@@ -337,7 +342,7 @@ int main(void)
 
         // checksum test passed, send ack
         uart_putc(BOOTLOADER_RESPONSE_ACK);
-
+#if 0
         // fetch flash content (len+1 bytes!)
         flash_read(address, buffer, ((uint16_t) len) + 1);
 
@@ -348,6 +353,10 @@ int main(void)
         {
           uart_putc(*data_ptr++);
         }
+        while (len--);
+#endif
+        // read direct from flash to usart.
+        do uart_putc(Flash_ReadByte(address++));
         while (len--);
 
         // wait for next command
@@ -594,6 +603,7 @@ static uint8_t bootloader_decode_address(uint16_t *address)
   return 1;
 }
 
+#if 0
 // NOTE: this will read len+1 bytes to buffer buf
 void flash_read(uint16_t address, uint8_t *buf, uint16_t len)
 {
@@ -604,6 +614,7 @@ void flash_read(uint16_t address, uint8_t *buf, uint16_t len)
     *buf++ = Flash_ReadByte(address++);
   }
 }
+#endif
 
 void uart_putc(char ch)
 {
