@@ -303,6 +303,8 @@ LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += $(EXTMEMOPTS)
 #LDFLAGS +=  -latxmega32e5
+LDFLAGS +=  -nostartfiles
+LDFLAGS +=  -nostdlib
 
 # Programming support using avrdude. Settings and variables.
 ifeq ($(OVERRIDE_AVRDUDE_PROGRAMMER),)
@@ -800,7 +802,7 @@ end:
 
 # Display size of file.
 HEXSIZE = $(SIZE) --target=$(FORMAT) $(TARGET).hex
-ELFSIZE = $(SIZE) -x -A $(TARGET).elf
+ELFSIZE = $(SIZE)  -A $(TARGET).elf
 sizebefore:
 	@if [ -f $(TARGET).elf ]; then echo; echo $(MSG_SIZE_BEFORE); $(ELFSIZE); echo; fi
 

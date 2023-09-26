@@ -80,7 +80,7 @@ void uart_putc(char ch);
 char uart_getc(void);
 void appStart(void);
 static uint8_t bootloader_decode_address(uint16_t *address);
-void flash_read(uint16_t address, uint8_t *buf, uint16_t len);
+//void flash_read(uint16_t address, uint8_t *buf, uint16_t len);
 uint8_t flash_write_data(uint16_t address, uint8_t *buf, uint16_t len);
 uint8_t flash_erase_page_1KB(uint8_t page);
 
@@ -108,13 +108,13 @@ int main(void)
   uint8_t len = 0;
   uint8_t page_n = 0;
 
-#ifdef __AVR_XMEGA__
+
   /* Okay so we've arrived here.
    * The possible sources of ATxmega reset are :-
    * Power on reset.
    * External reset.
-   * Watchdog reset.
    * Brownout reset.
+   * Watchdog reset.
    * PDI reset.
    * Software reset.
    * or we could have jumped here
@@ -123,42 +123,20 @@ int main(void)
    * Clock is 2MHz.
    */
 
-  // Bootloader does not use watchdog so must be the Application.
-  // If Brownout reset and application needs to run then treat as watchdog reset.
-  if(RST.STATUS & (RST_WDRF_bm | RST_BORF_bm)) appStart();//
 
-  // Check reset conditions.
-  // RST.STATUS bits 6 and 7 aren't used according to the manual (note bit 6 is defined as RST_SDRF_bm (Spike Detection) in nearly every header).
+  if(! (RST.STATUS & RST_PORF_bm))  appStart();//
 
-  register uint8_t mask = RST_SRF_bm | RST_PDIRF_bm | RST_WDRF_bm | RST_BORF_bm | RST_EXTRF_bm | RST_PORF_bm;
-
-#ifdef RST_SDRF_bm
-  mask |= RST_SDRF_bm;
-#endif
-
-  // No valid reset condition so do a software reset.
-  // Best way to call bootloader is via a Software Reset.
-  if (! (RST.STATUS & mask))
-  {
-    _PROTECTED_WRITE(RST.CTRL, RST_SWRST_bm);
-    while(1); // Should not execute according to the manual.
-  }
-#endif
-
-  // check if we have to enter the bootloader
+  // Check if we have to enter the bootloader
   // or jump to the application
   // wait some time for the voltage level on i/o to
-  // stabilize
+  // stabilise
 
   BL_PORT.DIRCLR = (1 << BL_PIN);
   BL_PIN_CTRL_REG = PORT_OPC_PULLUP_gc; // Pullup
 
   _delay_ms(100);
 
-  if (!(BL_PIN_ACTIVE))
-  {
-    appStart();
-  }
+  if (! (BL_PIN_ACTIVE))  appStart();
 
   // LED_init
   BL_LED_PORT.DIRSET = (1 << BL_LED_PIN);
@@ -168,24 +146,41 @@ int main(void)
   BEEPER_PORT.DIRSET = (1 << BEEPER_PIN);
   BEEPER_ON;
 
-  // Enable Crystal Oscillator so we can go fast and accurate.
-  // Enable external oscillator (16MHz)
-  OSC.XOSCCTRL = OSC_FRQRANGE_12TO16_gc | OSC_XOSCSEL_XTAL_256CLK_gc;
-  OSC.CTRL |= OSC_XOSCEN_bm;
-  while ((OSC.STATUS & OSC_XOSCRDY_bm) == 0)
-    /* wait */;
-  // Enable PLL (2* 16MHz Crystal = 32MHz)
-  OSC.PLLCTRL = OSC_PLLSRC_XOSC_gc | 2;
-  OSC.CTRL |= OSC_PLLEN_bm;
-  while ((OSC.STATUS & OSC_PLLRDY_bm) == 0)
-    /* wait */;
-  // Switch to PLL clock
-  CPU_CCP = 0xD8;
-  CLK.CTRL = CLK_SCLKSEL_RC2M_gc;
-  CPU_CCP = 0xD8;
-  CLK.CTRL = CLK_SCLKSEL_PLL_gc;
 
-  OSC.CTRL &= ~OSC_RC2MEN_bm; // Disable 2MHz oscillator which was enabled after reset.
+#if 1
+#if (F_CPU != 32000000 && F_CPU != 2000000)
+#error Oscillator can only be 2 or 32 MHz.
+#endif // F_CPU
+
+#if F_CPU == 2000000
+#if defined (USE_DFLL) && defined (DFLLRC2M) // x32e5 does not have 2MHz DFLL.
+  OSC.CTRL |= OSC_RC32KEN_bm;
+  while(!(OSC.STATUS & OSC_RC32KRDY_bm));
+  DFLLRC2M.CTRL = DFLL_ENABLE_bm;
+#endif // USE_DFLL
+#endif // F_CPU == 2000000
+
+#if F_CPU == 32000000
+  OSC.CTRL |= OSC_RC32MEN_bm; // Enable the internal 32MHz oscillator.
+  while(!(OSC.STATUS & OSC_RC32MRDY_bm)); // Wait for 32MHz oscillator to stabilise.
+  _PROTECTED_WRITE(CLK.CTRL, CLK_SCLKSEL_RC32M_gc); // Select RC32MHz as source.
+#ifdef USE_DFLL
+  OSC.CTRL |= OSC_RC32KEN_bm;
+  while(!(OSC.STATUS & OSC_RC32KRDY_bm));
+  DFLLRC32M.CTRL = DFLL_ENABLE_bm;
+#endif // USE_DFLL
+#endif // F_CPU == 32000000
+#endif
+
+
+//#define CLOCK_OUT
+  #if defined (CLOCK_OUT)
+    // Output ClkPER on PC7.
+    PORTCFG.CLKEVOUT = PORTCFG_CLKOUT_PC7_gc;
+    PORTC.DIRSET = PIN7_bm;
+    while (1);
+  #endif
+
 
   // Manual says set TXD pin high and output.
   PORTC.OUTSET = TXD_PIN;
@@ -342,19 +337,7 @@ int main(void)
 
         // checksum test passed, send ack
         uart_putc(BOOTLOADER_RESPONSE_ACK);
-#if 0
-        // fetch flash content (len+1 bytes!)
-        flash_read(address, buffer, ((uint16_t) len) + 1);
 
-        // send len+1 bytes
-        data_ptr = &buffer[0];
-
-        do
-        {
-          uart_putc(*data_ptr++);
-        }
-        while (len--);
-#endif
         // read direct from flash to usart.
         do uart_putc(Flash_ReadByte(address++));
         while (len--);
@@ -539,25 +522,24 @@ uint8_t flash_erase_page_1KB(uint8_t page)
   return 1;
 }
 
+
 void appStart()
 {
-  // Undo some Bootloader functions
-  // deactivate BEEPER
-  BEEPER_OFF;
-  BEEPER_PORT.DIRCLR = (1 << BEEPER_PIN);
-
-  BL_PIN_CTRL_REG = 0;
-
-  USART_DISABLE_TX(USARTC0);
-  USART_DISABLE_RX(USARTC0);
-  PORTC.DIRCLR = TXD_PIN;
-
   myfuncptr_t call_app;
   call_app = 0;
 
   if (pgm_read_byte((uint16_t) call_app) != 0xFF)
   {
+    // Undo Bootloader configuration.
+    // deactivate BEEPER
+    BEEPER_OFF;
+    BEEPER_PORT.DIRCLR = (1 << BEEPER_PIN);
+    BL_PIN_CTRL_REG = 0;
+    USART_DISABLE_TX(USARTC0);
+    USART_DISABLE_RX(USARTC0);
+    PORTC.DIRCLR = TXD_PIN;
     LED_OFF;
+    RST.STATUS |= RST_PORF_bm;
     (*call_app)();
   }
 }
